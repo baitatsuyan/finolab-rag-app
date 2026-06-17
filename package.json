@@ -1,0 +1,13 @@
+{
+  "name": "finolab-rag-app",
+  "version": "1.0.0",
+  "description": "FINOLAB メンバー企業について回答する目的特化型RAGアプリ（ゼロ依存）",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server.mjs"
+  }
+}

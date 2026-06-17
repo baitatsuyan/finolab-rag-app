@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>FINOLAB メンバー企業アシスタント</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #181b22; --panel2: #1f232c;
+    --text: #e6e8ec; --muted: #9aa3b2; --accent: #4f9cf9; --user: #2a3340;
+    --border: #2a2f3a;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif;
+    display: flex; flex-direction: column; height: 100vh;
+  }
+  header {
+    padding: 14px 20px; border-bottom: 1px solid var(--border);
+    background: var(--panel); display: flex; align-items: baseline; gap: 12px;
+  }
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; }
+  header .sub { font-size: 12px; color: var(--muted); }
+  #chat {
+    flex: 1; overflow-y: auto; padding: 24px 0;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 0 20px; }
+  .msg { display: flex; gap: 12px; margin-bottom: 20px; }
+  .msg .avatar {
+    width: 30px; height: 30px; border-radius: 7px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700;
+  }
+  .msg.user .avatar { background: var(--user); color: var(--text); }
+  .msg.assistant .avatar { background: var(--accent); color: #fff; }
+  .msg .body { white-space: pre-wrap; line-height: 1.7; padding-top: 4px; flex: 1; }
+  .msg.user .body { color: #d6dbe4; }
+  .empty {
+    color: var(--muted); text-align: center; margin-top: 60px; line-height: 1.9;
+  }
+  .empty .chips { margin-top: 18px; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .chip {
+    background: var(--panel2); border: 1px solid var(--border); color: var(--text);
+    padding: 8px 12px; border-radius: 18px; font-size: 13px; cursor: pointer;
+  }
+  .chip:hover { border-color: var(--accent); }
+  footer { border-top: 1px solid var(--border); background: var(--panel); padding: 14px 0; }
+  .inputrow { max-width: 760px; margin: 0 auto; padding: 0 20px; display: flex; gap: 10px; }
+  textarea {
+    flex: 1; resize: none; background: var(--panel2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px;
+    font-size: 14px; font-family: inherit; line-height: 1.5; max-height: 160px;
+  }
+  textarea:focus { outline: none; border-color: var(--accent); }
+  button#send {
+    background: var(--accent); color: #fff; border: none; border-radius: 10px;
+    padding: 0 20px; font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+  button#send:disabled { opacity: .5; cursor: not-allowed; }
+  .hint { max-width: 760px; margin: 8px auto 0; padding: 0 20px; font-size: 11px; color: var(--muted); }
+</style>
+</head>
+<body>
+  <header>
+    <h1>FINOLAB メンバー企業アシスタント</h1>
+    <span class="sub" id="sub">全メンバー企業 約82社のデータに対応</span>
+  </header>
+
+  <div id="chat">
+    <div class="wrap">
+      <div class="empty" id="empty">
+        FINOLABのメンバー企業について質問してください。<br />
+        登録データに基づいて回答します。
+        <div class="chips">
+          <span class="chip">決済領域の企業を教えて</span>
+          <span class="chip">資金移動業のライセンスを持つ企業は？</span>
+          <span class="chip">セブン銀行の事業内容は？</span>
+          <span class="chip">AIを活用している企業を挙げて</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="inputrow">
+      <textarea id="input" rows="1" placeholder="質問を入力（Shift+Enterで改行）"></textarea>
+      <button id="send">送信</button>
+    </div>
+    <div class="hint">回答は登録済みデータのみを根拠とします。データ未登録の企業については回答できない場合があります。</div>
+  </footer>
+
+<script>
+  const chat = document.getElementById("chat");
+  const input = document.getElementById("input");
+  const sendBtn = document.getElementById("send");
+  const empty = document.getElementById("empty");
+  const history = []; // {role, content}
+
+  function autosize() {
+    input.style.height = "auto";
+    input.style.height = Math.min(input.scrollHeight, 160) + "px";
+  }
+  input.addEventListener("input", autosize);
+
+  function addMessage(role, text) {
+    if (empty) empty.style.display = "none";
+    const wrap = document.createElement("div");
+    wrap.className = "wrap";
+    const msg = document.createElement("div");
+    msg.className = "msg " + role;
+    const avatar = document.createElement("div");
+    avatar.className = "avatar";
+    avatar.textContent = role === "user" ? "You" : "AI";
+    const body = document.createElement("div");
+    body.className = "body";
+    body.textContent = text;
+    msg.appendChild(avatar);
+    msg.appendChild(body);
+    wrap.appendChild(msg);
+    chat.appendChild(wrap);
+    chat.scrollTop = chat.scrollHeight;
+    return body;
+  }
+
+  async function send(text) {
+    if (!text.trim()) return;
+    sendBtn.disabled = true;
+    input.value = "";
+    autosize();
+
+    history.push({ role: "user", content: text });
+    addMessage("user", text);
+    const out = addMessage("assistant", "");
+    out.textContent = "…";
+
+    try {
+      let res = await postChat();
+      if (res.status === 401) {
+        const pw = window.prompt("このアプリは合言葉が必要です。合言葉を入力してください。");
+        if (pw) {
+          localStorage.setItem("finolab_pw", pw);
+          res = await postChat();
+        }
+      }
+      if (!res.ok) {
+        let msg = "エラーが発生しました。";
+        try { msg = (await res.json()).error || msg; } catch {}
+        if (res.status === 401) msg = "合言葉が違うようです。ページを再読み込みして再度お試しください。";
+        out.textContent = msg;
+        return;
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let acc = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        acc += decoder.decode(value, { stream: true });
+        out.textContent = acc;
+        chat.scrollTop = chat.scrollHeight;
+      }
+      history.push({ role: "assistant", content: acc });
+    } catch (e) {
+      out.textContent = "通信エラー: " + e;
+    } finally {
+      sendBtn.disabled = false;
+      input.focus();
+    }
+  }
+
+  function postChat() {
+    const headers = { "Content-Type": "application/json" };
+    const pw = localStorage.getItem("finolab_pw");
+    if (pw) headers["x-access-password"] = pw;
+    return fetch("/api/chat", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ messages: history }),
+    });
+  }
+
+  sendBtn.addEventListener("click", () => send(input.value));
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      send(input.value);
+    }
+  });
+  document.querySelectorAll(".chip").forEach((c) =>
+    c.addEventListener("click", () => send(c.textContent))
+  );
+  input.focus();
+</script>
+</body>
+</html>

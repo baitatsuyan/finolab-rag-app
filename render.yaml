@@ -1,0 +1,19 @@
+# Render Blueprint（このリポジトリを Render に接続すると自動で構成されます）
+# 公開後、ANTHROPIC_API_KEY は Render のダッシュボードで入力します（リポジトリには保存されません）。
+services:
+  - type: web
+    name: finolab-rag-app
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false # デプロイ時に Render の画面で安全に入力（GitHubには載らない）
+      # 必要に応じて調整（任意）:
+      # - key: RATE_PER_MIN        # 1IPあたり毎分の上限（既定15）
+      #   value: "15"
+      # - key: MAX_DAILY_REQUESTS  # 全体の1日上限（既定2000）
+      #   value: "2000"
+      # - key: ACCESS_PASSWORD     # 設定すると「合言葉モード」になる（完全公開なら設定しない）
+      #   sync: false

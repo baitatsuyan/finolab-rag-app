@@ -1,0 +1,9 @@
+# APIキーは絶対にコミットしない
+.env
+.env.*
+!.env.example
+
+# 依存・ログ
+node_modules/
+*.log
+.DS_Store
