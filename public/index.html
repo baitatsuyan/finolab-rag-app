@@ -60,6 +60,9 @@
   }
   button#send:disabled { opacity: .5; cursor: not-allowed; }
   .hint { max-width: 760px; margin: 8px auto 0; padding: 0 20px; font-size: 11px; color: var(--muted); }
+  .followups { max-width: 760px; margin: 0 auto 10px; padding: 0 20px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .followups[hidden] { display: none; }
+  .followups .fu-label { font-size: 11px; color: var(--muted); margin-right: 2px; }
 </style>
 </head>
 <body>
@@ -84,6 +87,7 @@
   </div>
 
   <footer>
+    <div class="followups" id="followups" hidden></div>
     <div class="inputrow">
       <textarea id="input" rows="1" placeholder="質問を入力（Shift+Enterで改行）"></textarea>
       <button id="send">送信</button>
@@ -97,6 +101,58 @@
   const sendBtn = document.getElementById("send");
   const empty = document.getElementById("empty");
   const history = []; // {role, content}
+  const followups = document.getElementById("followups");
+
+  // 直前の質問に近いテーマの例を出すための簡易キーワード判定（API呼び出しなし）
+  const DEFAULT_QS = [
+    "決済領域の企業を教えて",
+    "保険・インシュアテックの企業は？",
+    "AIを活用している企業を挙げて",
+  ];
+  const CLUSTERS = [
+    { keys: ["決済", "送金", "ペイ", "支払", "カード", "プリペイド", "デビット", "資金移動"],
+      qs: ["国際送金を提供している企業は？", "資金移動業ライセンスを持つ企業は？", "プリペイド・カード決済の企業は？"] },
+    { keys: ["ライセンス", "免許", "登録", "規制", "金融商品取引", "銀行業", "少額短期", "regtech", "レグテック", "コンプライアンス"],
+      qs: ["第一種・第二種金融商品取引業の企業は？", "銀行業の免許を持つ企業は？", "RegTech・規制対応の企業は？"] },
+    { keys: ["保険", "インシュア", "少短"],
+      qs: ["インシュアテックの企業を挙げて", "少額短期保険の企業は？", "保険比較・代理店の企業は？"] },
+    { keys: ["暗号資産", "ステーブルコイン", "ブロックチェーン", "web3", "nft", "dao", "トークン", "仮想通貨"],
+      qs: ["ステーブルコインに関わる企業は？", "ブロックチェーンを使う企業は？", "Web3・DAO関連の企業は？"] },
+    { keys: ["投資", "運用", "資産", "ロボアド", "証券", "ファンド", "クラウドファンディング", "オルタナ"],
+      qs: ["ロボアドバイザーを提供する企業は？", "オルタナティブ投資の企業は？", "クラウドファンディングの企業は？"] },
+    { keys: ["不動産", "住宅ローン", "マンション", "賃貸"],
+      qs: ["不動産テックの企業は？", "住宅ローン関連の企業は？", "不動産データを扱う企業は？"] },
+    { keys: ["ai", "人工知能", "機械学習", "自然言語", "llm", "与信", "審査", "データ分析"],
+      qs: ["与信・審査にAIを使う企業は？", "自然言語処理を活用する企業は？", "データ分析・BIの企業は？"] },
+    { keys: ["上場", "大手", "corporate", "スタートアップ", "団体", "association", "従業員", "資本金", "設立", "本社"],
+      qs: ["上場している企業は？", "大手企業（Corporate）は？", "参画している団体（Association）は？"] },
+  ];
+
+  function suggestQuestions(q) {
+    const s = (q || "").toLowerCase();
+    for (const c of CLUSTERS) {
+      if (c.keys.some((k) => s.includes(k))) return c.qs;
+    }
+    return DEFAULT_QS;
+  }
+
+  function renderFollowups(lastQ) {
+    const qs = suggestQuestions(lastQ).filter((x) => x !== lastQ).slice(0, 3);
+    followups.innerHTML = "";
+    if (qs.length === 0) { followups.hidden = true; return; }
+    const label = document.createElement("span");
+    label.className = "fu-label";
+    label.textContent = "こんな質問もできます：";
+    followups.appendChild(label);
+    qs.forEach((q) => {
+      const c = document.createElement("span");
+      c.className = "chip";
+      c.textContent = q;
+      c.addEventListener("click", () => send(q));
+      followups.appendChild(c);
+    });
+    followups.hidden = false;
+  }
 
   function autosize() {
     input.style.height = "auto";
@@ -127,6 +183,7 @@
   async function send(text) {
     if (!text.trim()) return;
     sendBtn.disabled = true;
+    followups.hidden = true;
     input.value = "";
     autosize();
 
@@ -162,6 +219,7 @@
         chat.scrollTop = chat.scrollHeight;
       }
       history.push({ role: "assistant", content: acc });
+      renderFollowups(text);
     } catch (e) {
       out.textContent = "通信エラー: " + e;
     } finally {
